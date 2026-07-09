@@ -1,0 +1,599 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>NIDS Dashboard</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b1020;
+        --panel: rgba(255, 255, 255, 0.06);
+        --panel2: rgba(255, 255, 255, 0.08);
+        --text: rgba(255, 255, 255, 0.92);
+        --muted: rgba(255, 255, 255, 0.65);
+        --border: rgba(255, 255, 255, 0.12);
+        --accent: #7c3aed;
+        --good: #22c55e;
+        --warn: #f59e0b;
+        --bad: #ef4444;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        background:
+          radial-gradient(1000px 600px at 15% 0%, rgba(124, 58, 237, 0.35), transparent 60%),
+          radial-gradient(900px 500px at 95% 10%, rgba(34, 197, 94, 0.22), transparent 55%),
+          var(--bg);
+        color: var(--text);
+      }
+      a {
+        color: inherit;
+      }
+      .wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px;
+      }
+      .top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+      .title {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .title h1 {
+        margin: 0;
+        font-size: 22px;
+        letter-spacing: 0.2px;
+      }
+      .subtitle {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--warn);
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.22);
+      }
+      .dot.ok {
+        background: var(--good);
+        box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.22);
+      }
+      .dot.bad {
+        background: var(--bad);
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.22);
+      }
+      .actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      button {
+        border: 1px solid var(--border);
+        background: linear-gradient(180deg, var(--panel2), var(--panel));
+        color: var(--text);
+        border-radius: 12px;
+        padding: 10px 12px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 13px;
+        transition: transform 0.08s ease, border-color 0.12s ease;
+      }
+      button:hover {
+        transform: translateY(-1px);
+        border-color: rgba(255, 255, 255, 0.22);
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 14px;
+      }
+      @media (max-width: 920px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .card {
+        border: 1px solid var(--border);
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.05));
+        border-radius: 16px;
+        overflow: hidden;
+      }
+      .card h2 {
+        margin: 0;
+        font-size: 14px;
+        letter-spacing: 0.2px;
+        padding: 14px 14px 10px 14px;
+        color: rgba(255, 255, 255, 0.88);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+      .pill {
+        font-size: 12px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.18);
+        color: rgba(255, 255, 255, 0.8);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+      th,
+      td {
+        padding: 10px 14px;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        font-size: 13px;
+      }
+      th {
+        color: rgba(255, 255, 255, 0.7);
+        text-align: left;
+        font-weight: 700;
+        background: rgba(0, 0, 0, 0.12);
+        position: sticky;
+        top: 0;
+        backdrop-filter: blur(10px);
+      }
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+          "Liberation Mono", "Courier New", monospace;
+      }
+      .sev {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 800;
+        letter-spacing: 0.2px;
+        text-transform: uppercase;
+        font-size: 11px;
+      }
+      .badge {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        background: var(--warn);
+        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.22);
+      }
+      .badge.high {
+        background: var(--bad);
+        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.22);
+      }
+      .badge.medium {
+        background: var(--warn);
+      }
+      .badge.low {
+        background: #60a5fa;
+        box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.18);
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .list {
+        padding: 0 14px 12px 14px;
+      }
+      .rule {
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        padding: 12px 0;
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        justify-content: space-between;
+      }
+      .rule:first-child {
+        border-top: 0;
+      }
+      .rule .left {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      }
+      .rule .name {
+        font-weight: 800;
+        font-size: 13px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .rule .desc {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.35;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+      .input {
+        width: 92px;
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.22);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 8px 10px;
+        font-weight: 700;
+        font-size: 13px;
+        outline: none;
+      }
+      .input:focus {
+        border-color: rgba(124, 58, 237, 0.55);
+        box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.18);
+      }
+      .toggle {
+        appearance: none;
+        width: 44px;
+        height: 24px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.12);
+        position: relative;
+        cursor: pointer;
+        transition: background 0.12s ease, border-color 0.12s ease;
+      }
+      .toggle::after {
+        content: "";
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.8);
+        transition: transform 0.12s ease;
+      }
+      .toggle:checked {
+        background: rgba(34, 197, 94, 0.25);
+        border-color: rgba(34, 197, 94, 0.45);
+      }
+      .toggle:checked::after {
+        transform: translateX(20px);
+      }
+      .footer {
+        margin-top: 14px;
+        color: rgba(255, 255, 255, 0.55);
+        font-size: 12px;
+      }
+      .err {
+        margin-top: 10px;
+        border: 1px solid rgba(239, 68, 68, 0.25);
+        background: rgba(239, 68, 68, 0.1);
+        padding: 10px 12px;
+        border-radius: 12px;
+        color: rgba(255, 255, 255, 0.88);
+        font-size: 13px;
+        display: none;
+      }
+      .err.show {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="top">
+        <div class="title">
+          <h1>NIDS Dashboard</h1>
+          <div class="subtitle">
+            <span id="statusDot" class="dot"></span>
+            <span id="statusText">Connecting…</span>
+            <span class="muted">•</span>
+            <span class="muted">Backend:</span>
+            <span class="mono muted" id="baseUrl"></span>
+            <span class="muted">•</span>
+            <span class="muted">Updated:</span>
+            <span class="mono muted" id="updatedAt">—</span>
+            <span class="muted">•</span>
+            <span class="muted">Packets:</span>
+            <span class="mono muted" id="pktCount">0</span>
+          </div>
+        </div>
+        <div class="actions">
+          <button id="refreshBtn">Refresh</button>
+          <button id="testBtn">Add test alert</button>
+          <button id="clearBtn">Clear alerts</button>
+        </div>
+      </div>
+
+      <div id="errBox" class="err"></div>
+
+      <div class="grid">
+        <div class="card">
+          <h2>
+            Latest alerts
+            <span class="pill"><span id="alertCount">0</span> shown</span>
+          </h2>
+          <div style="max-height: 520px; overflow: auto">
+            <table>
+              <thead>
+                <tr>
+                  <th>Time (UTC)</th>
+                  <th>Attack</th>
+                  <th>Severity</th>
+                  <th>Source IP</th>
+                </tr>
+              </thead>
+              <tbody id="alertsTbody">
+                <tr>
+                  <td colspan="4" class="muted">No data yet.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>
+            Detection rules
+            <span class="pill"><span id="ruleCount">0</span></span>
+          </h2>
+          <div class="list" id="rulesList">
+            <div class="muted">Loading…</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        Tip: if live sniffing doesn’t work on Windows, install Npcap and run the backend as Administrator.
+      </div>
+    </div>
+
+    <script>
+      const API_BASE =
+        localStorage.getItem("nids_api_base") ||
+        `${location.protocol}//${location.hostname}:8000`;
+      document.getElementById("baseUrl").textContent = API_BASE;
+
+      const els = {
+        statusDot: document.getElementById("statusDot"),
+        statusText: document.getElementById("statusText"),
+        updatedAt: document.getElementById("updatedAt"),
+        errBox: document.getElementById("errBox"),
+        alertsTbody: document.getElementById("alertsTbody"),
+        alertCount: document.getElementById("alertCount"),
+        rulesList: document.getElementById("rulesList"),
+        ruleCount: document.getElementById("ruleCount"),
+        refreshBtn: document.getElementById("refreshBtn"),
+        clearBtn: document.getElementById("clearBtn"),
+        testBtn: document.getElementById("testBtn"),
+          pktCount: document.getElementById("pktCount"),
+      };
+
+      function setStatus(state, text) {
+        els.statusDot.classList.remove("ok", "bad");
+        if (state === "ok") els.statusDot.classList.add("ok");
+        if (state === "bad") els.statusDot.classList.add("bad");
+        els.statusText.textContent = text;
+      }
+
+      function showError(msg) {
+        els.errBox.textContent = msg;
+        els.errBox.classList.add("show");
+      }
+
+      function clearError() {
+        els.errBox.textContent = "";
+        els.errBox.classList.remove("show");
+      }
+
+      function fmtIso(iso) {
+        if (!iso) return "—";
+        try {
+          return new Date(iso).toISOString().replace("T", " ").replace("Z", "Z");
+        } catch {
+          return String(iso);
+        }
+      }
+
+      function sevBadge(sev) {
+        const s = String(sev || "").toLowerCase();
+        const cls = s === "high" ? "high" : s === "low" ? "low" : "medium";
+        return `<span class="sev"><span class="badge ${cls}"></span>${cls}</span>`;
+      }
+
+      function renderAlerts(alerts) {
+        els.alertCount.textContent = String(alerts.length);
+        if (!alerts.length) {
+          els.alertsTbody.innerHTML = `<tr><td colspan="4" class="muted">No alerts yet.</td></tr>`;
+          return;
+        }
+        els.alertsTbody.innerHTML = alerts
+          .map((a) => {
+            const attack = a.attack_type || a.name || "Unknown";
+            const sev = a.severity || "medium";
+            const ip = a.source_ip || a.src || "—";
+            const ts = a.timestamp || a.time;
+            return `<tr>
+              <td class="mono">${fmtIso(ts)}</td>
+              <td>${attack}</td>
+              <td>${sevBadge(sev)}</td>
+              <td class="mono">${ip}</td>
+            </tr>`;
+          })
+          .join("");
+      }
+
+      function renderRules(rules) {
+        const list = Array.isArray(rules) ? rules : [];
+        els.ruleCount.textContent = String(list.length);
+        if (!list.length) {
+          els.rulesList.innerHTML = `<div class="muted">No rules.</div>`;
+          return;
+        }
+        els.rulesList.innerHTML = list
+          .map((r) => {
+            const enabled = r.enabled !== false;
+            const sev = r.severity || "medium";
+            const threshold = Number.isFinite(Number(r.threshold)) ? Number(r.threshold) : "";
+            const dport = Number.isFinite(Number(r.dport)) ? Number(r.dport) : "";
+            return `<div class="rule">
+              <div class="left">
+                <div class="name">${r.name || r.attack_type || "Rule"}</div>
+                <div class="desc">${r.description || ""}</div>
+                <div class="muted" style="font-size:12px;">Attack type: <span class="mono">${r.attack_type || "—"}</span></div>
+                <div class="muted" style="font-size:12px;">Detector: <span class="mono">${r.detector || "—"}</span></div>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:10px; align-items:flex-end;">
+                ${sevBadge(sev)}
+                <div class="row">
+                  <label class="muted" style="font-size:12px;">Enabled</label>
+                  <input class="toggle" type="checkbox" data-action="toggle" data-name="${encodeURIComponent(r.name || "")}" ${enabled ? "checked" : ""}/>
+                </div>
+                <div class="row">
+                  <label class="muted" style="font-size:12px;">Threshold</label>
+                  <input class="input" inputmode="numeric" placeholder="e.g. 30" data-field="threshold" data-name="${encodeURIComponent(r.name || "")}" value="${threshold}"/>
+                </div>
+                ${
+                  (r.detector || "") === "ssh_bruteforce"
+                    ? `<div class="row">
+                        <label class="muted" style="font-size:12px;">Port</label>
+                        <input class="input" inputmode="numeric" placeholder="22" data-field="dport" data-name="${encodeURIComponent(r.name || "")}" value="${dport}"/>
+                      </div>`
+                    : ""
+                }
+                <button data-action="save" data-name="${encodeURIComponent(r.name || "")}">Save</button>
+              </div>
+            </div>`;
+          })
+          .join("");
+
+        // Wire actions (delegated)
+        els.rulesList.querySelectorAll('[data-action="toggle"]').forEach((el) => {
+          el.addEventListener("change", async (ev) => {
+            const cb = ev.currentTarget;
+            const name = decodeURIComponent(cb.getAttribute("data-name") || "");
+            await patchRule(name, { enabled: cb.checked });
+          });
+        });
+
+        els.rulesList.querySelectorAll('[data-action="save"]').forEach((btn) => {
+          btn.addEventListener("click", async (ev) => {
+            const b = ev.currentTarget;
+            const name = decodeURIComponent(b.getAttribute("data-name") || "");
+            const patch = {};
+            els.rulesList
+              .querySelectorAll(`[data-name="${encodeURIComponent(name)}"][data-field]`)
+              .forEach((inp) => {
+                const field = inp.getAttribute("data-field");
+                const val = inp.value;
+                if (!field) return;
+                if (val === "") return;
+                patch[field] = Number(val);
+              });
+            await patchRule(name, patch);
+          });
+        });
+      }
+
+      async function fetchJson(path, init) {
+        const res = await fetch(`${API_BASE}${path}`, {
+          ...init,
+          headers: { "content-type": "application/json", ...(init && init.headers) },
+        });
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          throw new Error(`HTTP ${res.status} ${res.statusText}${text ? ` — ${text}` : ""}`);
+        }
+        return res.json();
+      }
+
+      async function refresh() {
+        try {
+          clearError();
+          setStatus("warn", "Fetching…");
+          const data = await fetchJson("/api/");
+          renderAlerts(Array.isArray(data.alerts) ? data.alerts : []);
+          renderRules(data.rules);
+          els.pktCount.textContent = String((data.capture && data.capture.packets_total) || 0);
+          if (data.capture && data.capture.error) {
+            showError(`Sniffer error: ${data.capture.error}`);
+          }
+          els.updatedAt.textContent = fmtIso(new Date().toISOString());
+          setStatus("ok", data.status === "running" ? "Connected" : String(data.status || "Connected"));
+        } catch (e) {
+          setStatus("bad", "Disconnected");
+          showError(
+            `Could not reach backend at ${API_BASE}. Make sure FastAPI is running on port 8000. (${e.message})`
+          );
+        }
+      }
+
+      async function patchRule(name, patch) {
+        try {
+          await fetchJson(`/rules/${encodeURIComponent(name)}`, {
+            method: "PATCH",
+            body: JSON.stringify(patch),
+          });
+          await refresh();
+        } catch (e) {
+          showError(`Rule update failed: ${e.message}`);
+        }
+      }
+
+      async function clearAlerts() {
+        els.clearBtn.disabled = true;
+        try {
+          await fetchJson("/alerts", { method: "DELETE" });
+          await refresh();
+        } catch (e) {
+          showError(`Clear failed: ${e.message}`);
+        } finally {
+          els.clearBtn.disabled = false;
+        }
+      }
+
+      async function addTestAlert() {
+        els.testBtn.disabled = true;
+        try {
+          const ip = `192.168.1.${Math.floor(Math.random() * 200) + 2}`;
+          const sev = ["low", "medium", "high"][Math.floor(Math.random() * 3)];
+          const attack = ["ICMP Flood", "Port Scan", "SSH Brute Force"][Math.floor(Math.random() * 3)];
+          await fetchJson("/alerts", {
+            method: "POST",
+            body: JSON.stringify({ attack_type: attack, severity: sev, source_ip: ip }),
+          });
+          await refresh();
+        } catch (e) {
+          showError(`Add test alert failed: ${e.message}`);
+        } finally {
+          els.testBtn.disabled = false;
+        }
+      }
+
+      els.refreshBtn.addEventListener("click", refresh);
+      els.clearBtn.addEventListener("click", clearAlerts);
+      els.testBtn.addEventListener("click", addTestAlert);
+
+      refresh();
+      setInterval(refresh, 2000);
+    </script>
+  </body>
+</html>
+
