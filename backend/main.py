@@ -235,4 +235,11 @@ def serve_frontend(path):
 if __name__ == "__main__":
     threading.Thread(target=process_loop, daemon=True).start()
     threading.Thread(target=stats_loop, daemon=True).start()
-    socketio.run(app, host="0.0.0.0", port=5000)
+
+    port = int(os.environ.get("PORT", 5000))
+
+    socketio.run(
+        app,
+        host="0.0.0.0",
+        port=port
+    )
