@@ -1,5 +1,7 @@
-fastapi
-uvicorn[standard]
-pymongo
+Flask
+Flask-Cors
+Flask-SocketIO
+eventlet
+psutil
 scapy
-
+pymongo
